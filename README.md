@@ -1,5 +1,7 @@
 # OCR2LaTeX
 
+![llama3](https://hub-apac-1.lobeobjects.space/blog/assets/98885a84481f8c3a76635b750bbff33c.webp)
+
 OCR2LaTeX is a Streamlit-based application that converts images of mathematical formulas or tables into LaTeX code. Using OCR and a fine-tuned LLaMA model, the app provides LaTeX code along with usage instructions, making it easier to integrate into your documents.
 
 ## Features
