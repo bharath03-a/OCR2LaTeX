@@ -1,8 +1,21 @@
 import streamlit as st
 import ollama
 from PIL import Image
+from streamlit_navigation_bar import st_navbar
 
-st.title("OCR2LateX Generator using llama3.2 🦙")
+st.set_page_config(
+    page_title="OCR2LateX",
+    page_icon="🔍",
+    layout="wide",
+    menu_items={
+        'Get Help': 'https://github.com/bharath03-a/OCR2LaTeX',
+        'Report a bug': "https://github.com/bharath03-a/OCR2LaTeX",
+        'About': "**OCR2LaTeX** is a Streamlit-based application that converts images of mathematical formulas or tables into LaTeX code. Using OCR and a fine-tuned LLaMA model, \
+                    the app provides LaTeX code along with usage instructions, making it easier to integrate into your documents."
+    }
+)
+
+st.title("OCR2LateX using llama3.2 🦙")
 
 
 if "messages" not in st.session_state:
@@ -21,18 +34,13 @@ if prompt:
     try:
         response = ollama.chat(
             model="llama3.2-vision",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
+            messages=[{"role": m["role"],
+                       "content": m["content"]}
                 for m in st.session_state.messages
             ],
         )
-        st.write("Full Response:", response)
 
-        if "content" in response:
-            assistant_response = response["content"]
-        else:
-            st.error("Unexpected response structure, 'content' key not found.")
-            assistant_response = "No valid response from the model."
+        assistant_response = response.message.content
 
         with st.chat_message("assistant"):
             st.markdown(assistant_response)
