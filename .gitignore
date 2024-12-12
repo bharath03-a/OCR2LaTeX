@@ -1,2 +1,4 @@
 .DS_Store
 .gitattributes
+ideas.txt
+__pycache__/
