@@ -8,3 +8,4 @@ sentence-transformers
 langchain-community
 langchain-chroma
 langchain-huggingface
+langchain-ollama
