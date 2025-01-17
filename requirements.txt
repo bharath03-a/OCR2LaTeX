@@ -1,2 +1,10 @@
 streamlit
-streamlit-navigation-bar
+ollama
+Pillow
+langchain
+streamlit-chat
+pypdf
+sentence-transformers
+langchain-community
+langchain-chroma
+langchain-huggingface

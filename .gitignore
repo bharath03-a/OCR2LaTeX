@@ -2,3 +2,6 @@
 .gitattributes
 ideas.txt
 __pycache__/
+
+latex_knowledge_base
+helper.py
