@@ -1,115 +1,107 @@
-# app.py
 import streamlit as st
 import ollama
 from PIL import Image
-from langchain.chains import RetrievalQA
+from streamlit_navigation_bar import st_navbar
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
-from streamlit_chat import message
-from io import BytesIO
 
-from langchain_ollama.llms import OllamaLLM
+import contsants as CNT
 
-# --- Set Page Config ---
 st.set_page_config(
     page_title="OCR2LaTeX",
     page_icon="🔍",
     menu_items={
         'Get Help': 'https://github.com/bharath03-a/OCR2LaTeX',
         'Report a bug': "https://github.com/bharath03-a/OCR2LaTeX",
-        'About': "OCR2LaTeX is a Streamlit-based application that converts images of mathematical formulas or tables into LaTeX code."
+        'About': "**OCR2LaTeX** is a Streamlit-based application that converts images of mathematical formulas or tables into LaTeX code. Using OCR and a fine-tuned LLaMA model, \
+                    the app provides LaTeX code along with usage instructions, making it easier to integrate into your documents."
     }
 )
 
-# --- Title ---
-st.title("OCR2LaTeX using LLaMA3.2 🦙")
+st.title("OCR2LaTeX using llama3.2 🦙")
 
-# --- Sidebar for Uploading Multiple Files ---
-with st.sidebar:
-    st.title("Upload Files")
-    uploaded_files = st.file_uploader("Choose Files", type=['png', 'jpg', 'jpeg'], accept_multiple_files=True)
-
-# --- RAG Setup ---
+# Load prebuilt Chroma vector store
 @st.cache_resource
-def load_knowledge_base():
+def load_prebuilt_vectorstore(persist_directory):
     """
-    Load the Chroma knowledge base using HuggingFace embeddings.
+    Loads the prebuilt Chroma vector store from the specified directory.
+    Args:
+        persist_directory (str): Path to the directory where the Chroma vector store is saved.
+    Returns:
+        Chroma: The loaded Chroma vector store.
     """
-    embedding_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    embedding_model = HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')
     vectorstore = Chroma(
-        persist_directory="latex_knowledge_base",  # Directory where the Chroma DB is stored
+        persist_directory=persist_directory,
         embedding_function=embedding_model
     )
     return vectorstore
 
-knowledge_base = load_knowledge_base()
+vectorstore = load_prebuilt_vectorstore("latex_knowledge_base")
+retriever = vectorstore.as_retriever()
 
-@st.cache_resource
-def initialize_llm():
-    """
-    Initialize the Ollama LLM.
-    """
-    return OllamaLLM(model="llama2", base_url="http://localhost:11434")  # Adjust the model and base URL as needed
-
-llm = initialize_llm()
-
-# Create the RetrievalQA chain
-qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=knowledge_base.as_retriever())
-
-# --- Process Uploaded Files ---
-def process_image(file):
-    """
-    Process an uploaded image to extract LaTeX code using the LLaMA model.
-    """
-    uploaded_img = Image.open(file)
-    st.image(uploaded_img, caption=f"Processing {file.name}")
+def generate_latex_with_context(image, query):
+    """Generate LaTeX with retrieved context."""
     try:
-        with st.spinner("Processing image..."):
-            response = llm.chat(
-                messages=[{"role": "user", "content": "Extract LaTeX", "images": [file.getvalue()]}]
+        with st.spinner("Processing the image and retrieving context..."):
+            # Retrieve relevant context
+            docs = retriever.get_relevant_documents(query)
+            context = "\n".join([doc.page_content for doc in docs])
+            
+            # Combine query with context
+            augmented_query = f"{query}\n\nContext:\n{context}"
+            
+            # Chat with LLaMA
+            response = ollama.chat(
+                model="llama3.2-vision",
+                messages=[{
+                    "role": "user",
+                    "content": augmented_query,
+                    "images": [image.getvalue()]
+                }]
             )
-            return response["message"]["content"]
+            return response.message.content
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"An error occurred: {e}")
         return None
 
-# --- Download LaTeX File ---
-def download_latex(latex_code, file_name="output.tex"):
-    """
-    Provide a download button for the extracted LaTeX code.
-    """
-    tex_file = BytesIO(latex_code.encode())
-    st.download_button(
-        label="Download LaTeX File",
-        data=tex_file,
-        file_name=file_name,
-        mime="text/plain"
-    )
+def clear_chat():
+    if "messages" in st.session_state:
+        del st.session_state["messages"]
+    st.rerun()
 
-# --- Chat Interface ---
-if "messages" not in st.session_state:
-    st.session_state["messages"] = []
+with st.sidebar:
+    st.title("OCR2LaTeX using llama3.2")
+    st.write("OCR2LaTeX is a Streamlit-based application that converts images of mathematical formulas or tables into LaTeX code.")
+    
+    uploaded_file = st.file_uploader("Choose a File: ",
+                                type = ['png', 'jpg', 'jpeg'],
+                                help = "Please upload the screenshot or image of the Latex formula")
+    
+    col1, col2 = st.columns([0.5, 0.5])
+    if uploaded_file and CNT.DEFAULT_MESSAGE_CONTENT:
+        uploaded_img = Image.open(uploaded_file)
+        st.image(uploaded_img, caption = "Uploaded image of the Mathematical Formula")
+        with col1:
+            if st.button("Extract LateX", icon = "🕵️‍♂️", type = "primary"):
+                try:
+                    result = generate_latex_with_context(uploaded_file, CNT.DEFAULT_MESSAGE_CONTENT)
+                except Exception as e:
+                    st.error(f"An error has interrupted the processing of the file: [{e}]")
+                    result = None
+                if result:
+                    st.session_state['messages'] = result
 
-for msg in st.session_state["messages"]:
-    message(msg["content"], is_user=msg["role"] == "user")
+    with col2:
+        if st.button("Clear Chat", icon = "🗑️", help = "Clears your previous chat"):
+            clear_chat()
 
-user_input = st.text_input("Ask something about the output:")
-if user_input:
-    st.session_state["messages"].append({"role": "user", "content": user_input})
-    response = qa_chain.run(user_input)
-    st.session_state["messages"].append({"role": "assistant", "content": response})
-    message(response)
+if "messages" in st.session_state:
+    st.write("#### LaTeX code from the Model:")
+    st.code(st.session_state['messages'], language = "latex", line_numbers = True)
 
-# --- Main Logic ---
-if uploaded_files:
-    for file in uploaded_files:
-        latex_code = process_image(file)
-        if latex_code:
-            st.write("### Extracted LaTeX Code:")
-            st.code(latex_code, language="latex")
-            st.write("### Rendered LaTeX:")
-            cleaned_latex = latex_code.replace(r"\[", "").replace(r"\]", "")
-            st.latex(cleaned_latex)
-            download_latex(latex_code, file.name.replace(".png", ".tex").replace(".jpg", ".tex"))
+    st.write("#### Rendered LaTeX code from the Model:")
+    cleaned_latex = st.session_state['messages'].replace(r"\[", "").replace(r"\]", "")
+    st.latex(cleaned_latex)
 else:
-    st.info("Upload images to extract LaTeX.")
+    st.info("Upload an image and click 'Extract LaTeX' to see the results here.")
