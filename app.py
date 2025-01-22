@@ -45,7 +45,7 @@ def generate_latex_with_context(image, query):
     try:
         with st.spinner("Processing the image and retrieving context..."):
             # Retrieve relevant context
-            docs = retriever.get_relevant_documents(query)
+            docs = retriever.invoke(query)
             context = "\n".join([doc.page_content for doc in docs])
             
             # Combine query with context
