@@ -5,7 +5,7 @@ from streamlit_navigation_bar import st_navbar
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 
-import contsants as CNT
+import constants as CNT
 
 st.set_page_config(
     page_title="OCR2LaTeX",
