@@ -18,6 +18,19 @@ st.set_page_config(
     }
 )
 
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebar"] {
+        width: 450px !important;
+        min-width: 200px !important;
+        max-width: 600px !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 st.title("OCR2LaTeX using llama3.2 🦙")
 
 # Load prebuilt Chroma vector store
@@ -78,7 +91,7 @@ with st.sidebar:
                                 type = ['png', 'jpg', 'jpeg'],
                                 help = "Please upload the screenshot or image of the Latex formula")
     
-    col1, col2 = st.columns([0.5, 0.5])
+    col1, col2 = st.columns(2)
     if uploaded_file and CNT.DEFAULT_MESSAGE_CONTENT:
         uploaded_img = Image.open(uploaded_file)
         st.image(uploaded_img, caption = "Uploaded image of the Mathematical Formula")
@@ -92,9 +105,9 @@ with st.sidebar:
                 if result:
                     st.session_state['messages'] = result
 
-    with col2:
-        if st.button("Clear Chat", icon = "🗑️", help = "Clears your previous chat"):
-            clear_chat()
+        with col2:
+            if st.button("Clear Chat", icon = "🗑️", help = "Clears your previous chat"):
+                clear_chat()
 
 if "messages" in st.session_state:
     st.write("#### LaTeX code from the Model:")
